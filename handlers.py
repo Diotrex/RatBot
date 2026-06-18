@@ -203,7 +203,7 @@ async def process_vpn(callback: CallbackQuery):
         await callback.answer()
         return
     
-    await safe_edit_text(callback.message, "🔑 Выберите VPN-ключ:", reply_markup=get_vpn_page_keyboard(keys, total, page=1))
+    await safe_edit_text(callback.message, "🔑 Выберите VPN-ключ(чем выше ключ, тем актуальнее):", reply_markup=get_vpn_page_keyboard(keys, total, page=1))
     await callback.answer()
 
 
@@ -214,7 +214,7 @@ async def process_vpn_page(callback: CallbackQuery):
     if not keys:
         await callback.answer("Страница пуста", show_alert=True)
         return
-    await safe_edit_text(callback.message, "🔑 Выберите VPN-ключ:", reply_markup=get_vpn_page_keyboard(keys, total, page=page))
+    await safe_edit_text(callback.message, "🔑 Выберите VPN-ключ(чем выше ключ, тем актуальнее):", reply_markup=get_vpn_page_keyboard(keys, total, page=page))
     await callback.answer()
 
 
