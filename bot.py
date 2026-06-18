@@ -536,7 +536,8 @@ async def process_ad_message(message: Message, state: FSMContext):
 # Кнопка "Назад"
 @router.callback_query(F.data == "back_to_main")
 @check_subscription_required
-async def process_back_to_main(callback: CallbackQuery):
+async def process_back_to_main(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
     await safe_edit_text(
         callback.message,
         "🐀 Главное меню Rat VPN:",
