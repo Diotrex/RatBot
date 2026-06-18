@@ -87,7 +87,7 @@ class Database:
             logger.info(f"Данные загружены: {len(self.users)} пользователей, "
                         f"{len(self.subscriptions)} подписок, "
                         f"{len(self.sponsors)} спонсоров, "
-                        f"{len(self.blacklist)} в ЧС")
+                        f"{len(self.blacklist)} в чёрном списке")
         except Exception as e:
             logger.error(f"Ошибка загрузки данных: {e}")
 
@@ -95,12 +95,12 @@ class Database:
         self.blacklist.add(user_id)
         self.users.discard(user_id)
         self.save_data()
-        logger.info(f"Пользователь {user_id} добавлен в ЧС")
+        logger.info(f"Пользователь {user_id} добавлен в чёрный список")
 
     def remove_from_blacklist(self, user_id: int):
         self.blacklist.discard(user_id)
         self.save_data()
-        logger.info(f"Пользователь {user_id} удален из ЧС")
+        logger.info(f"Пользователь {user_id} удалён из чёрного списка")
 
     def is_blacklisted(self, user_id: int) -> bool:
         return user_id in self.blacklist
@@ -186,7 +186,7 @@ class AdminSupportStates(StatesGroup):
 
 # ============ КЛАВИАТУРЫ ============
 MENU_TEXT = (
-    "🐀 Rat VPN\n\n"
+    "<b>🐀 Rat VPN</b>\n\n"
     "🔌 Подключиться — получить актуальный VPN-ключ.\n"
     "📖 Инструкция — если подключаетесь впервые.\n"
     "📢 Реклама — сотрудничество и размещение рекламы.\n"
@@ -275,9 +275,9 @@ def get_admin_support_keyboard() -> InlineKeyboardMarkup:
 
 def get_admin_blacklist_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="➕ Добавить в ЧС", callback_data="admin_blacklist_add"))
-    builder.row(InlineKeyboardButton(text="❌ Удалить из ЧС", callback_data="admin_blacklist_remove"))
-    builder.row(InlineKeyboardButton(text="📋 Список ЧС", callback_data="admin_blacklist_list"))
+    builder.row(InlineKeyboardButton(text="➕ Добавить в чёрный список", callback_data="admin_blacklist_add"))
+    builder.row(InlineKeyboardButton(text="❌ Удалить из чёрного списка", callback_data="admin_blacklist_remove"))
+    builder.row(InlineKeyboardButton(text="📋 Список чёрного списка", callback_data="admin_blacklist_list"))
     builder.row(InlineKeyboardButton(text="🔙 Назад в админ-панель", callback_data="back_to_admin"))
     return builder.as_markup()
 
@@ -334,7 +334,7 @@ async def cmd_start(message: Message):
         )
     else:
         db.add_user(message.from_user.id)
-        await message.answer(MENU_TEXT, reply_markup=get_main_menu_keyboard())
+        await message.answer(MENU_TEXT, reply_markup=get_main_menu_keyboard(), parse_mode=ParseMode.HTML)
 
 
 @router.callback_query(F.data == "check_sub")
@@ -346,7 +346,7 @@ async def process_check_sub(callback: CallbackQuery):
     is_subscribed, not_subscribed = await check_user_subscriptions(callback.bot, callback.from_user.id)
     if is_subscribed:
         db.add_user(callback.from_user.id)
-        await safe_edit_text(callback.message, MENU_TEXT, reply_markup=get_main_menu_keyboard())
+        await safe_edit_text(callback.message, MENU_TEXT, reply_markup=get_main_menu_keyboard(), parse_mode=ParseMode.HTML)
     else:
         not_sub_list = "\n".join([f"• {ch}" for ch in not_subscribed])
         await safe_edit_text(callback.message,
@@ -480,7 +480,7 @@ async def process_ad_message(message: Message, state: FSMContext):
 @check_subscription_required
 async def process_back_to_main(callback: CallbackQuery, state: FSMContext):
     await state.clear()
-    await safe_edit_text(callback.message, MENU_TEXT, reply_markup=get_main_menu_keyboard())
+    await safe_edit_text(callback.message, MENU_TEXT, reply_markup=get_main_menu_keyboard(), parse_mode=ParseMode.HTML)
     await callback.answer()
 
 
@@ -489,7 +489,7 @@ async def cmd_admin(message: Message):
     if message.from_user.id not in ADMIN_IDS:
         await message.answer("⛔ У вас нет доступа к админ-панели.")
         return
-    await message.answer("⚙️ Админ-панель Rat VPN:", reply_markup=get_admin_keyboard())
+    await message.answer("⚙️ Админ-панель", reply_markup=get_admin_keyboard())
 
 
 @router.callback_query(F.data == "back_to_admin")
@@ -498,7 +498,7 @@ async def back_to_admin(callback: CallbackQuery, state: FSMContext):
     if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("⛔ Нет доступа")
         return
-    await safe_edit_text(callback.message, "⚙️ Админ-панель Rat VPN:", reply_markup=get_admin_keyboard())
+    await safe_edit_text(callback.message, "⚙️ Админ-панель", reply_markup=get_admin_keyboard())
     await callback.answer()
 
 
@@ -740,7 +740,8 @@ async def admin_support_menu(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("⛔ Нет доступа")
-        return    await safe_edit_text(callback.message, "🆘 Управление обращениями:", reply_markup=get_admin_support_keyboard())
+        return
+    await safe_edit_text(callback.message, "🆘 Управление обращениями:", reply_markup=get_admin_support_keyboard())
     await callback.answer()
 
 
@@ -927,7 +928,7 @@ async def admin_stats(callback: CallbackQuery, state: FSMContext):
     ad_unreplied = sum(1 for m in db.ad_messages if not m['replied'])
     await safe_edit_text(callback.message,
         f"📊 Статистика бота:\n\n"
-        f"👥 Пользователей: {len(db.users)}\n🚫 В ЧС: {len(db.blacklist)}\n"
+        f"👥 Пользователей: {len(db.users)}\n🚫 В чёрном списке: {len(db.blacklist)}\n"
         f"🔑 Активных подписок: {len(db.subscriptions)}/5\n📢 Спонсоров: {len(db.sponsors)}\n"
         f"📨 Рассылок: {db.broadcast_count}\n\n"
         f"🆘 Обращений в поддержку: {support_count} (не отвечено: {support_unreplied})\n"
@@ -954,7 +955,7 @@ async def main():
     bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(router)
-    logger.info(f"Бот запущен! Загружено пользователей: {len(db.users)}, в ЧС: {len(db.blacklist)}")
+    logger.info(f"Бот запущен! Загружено пользователей: {len(db.users)}, в чёрном списке: {len(db.blacklist)}")
     channels = db.get_channels_to_check()
     for channel in channels:
         try:
