@@ -560,7 +560,8 @@ async def cmd_admin(message: Message):
 
 
 @router.callback_query(F.data == "back_to_admin")
-async def back_to_admin(callback: CallbackQuery):
+async def back_to_admin(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
     if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("⛔ Нет доступа")
         return
