@@ -238,7 +238,7 @@ def get_check_subscription_keyboard() -> InlineKeyboardMarkup:
 
 def get_admin_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="🔑 Подписки", callback_data="admin_subs_menu"))
+    builder.row(InlineKeyboardButton(text="🔑 Ключи", callback_data="admin_subs_menu"))
     builder.row(InlineKeyboardButton(text="📢 Спонсоры", callback_data="admin_sponsors_menu"))
     builder.row(InlineKeyboardButton(text="📨 Рассылка", callback_data="admin_broadcast"))
     builder.row(InlineKeyboardButton(text="🆘 Поддержка", callback_data="admin_support_menu"))
@@ -249,8 +249,8 @@ def get_admin_keyboard() -> InlineKeyboardMarkup:
 
 def get_admin_subs_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="➕ Добавить подписку", callback_data="admin_add_sub"))
-    builder.row(InlineKeyboardButton(text="❌ Удалить подписку", callback_data="admin_remove_sub"))
+    builder.row(InlineKeyboardButton(text="➕ Добавить ключ", callback_data="admin_add_sub"))
+    builder.row(InlineKeyboardButton(text="❌ Удалить ключ", callback_data="admin_remove_sub"))
     builder.row(InlineKeyboardButton(text="📋 Список подписок", callback_data="admin_list_subs"))
     builder.row(InlineKeyboardButton(text="🔙 Назад в админ-панель", callback_data="back_to_admin"))
     return builder.as_markup()
@@ -383,7 +383,7 @@ async def process_instruction(callback: CallbackQuery):
         callback.message,
         "📖 Как подключиться:\n\n"
         "1. Скачай программу Happ (или любое другое с поддержкой VLESS)\n\n"
-        "2. В боте нажми «🔌 Подключиться» и выбери актуальную подписку\n\n"
+        "2. В боте нажми «🔌 Подключиться» и выбери актуальный ключ\n\n"
         "3. Скопируй ключ — просто нажми на него\n\n"
         "4. В программе нажми «Добавить сервер» → вставь скопированную ссылку\n\n"
         "5. Готово! Подключайся и пользуйся 🎉\n\n"
@@ -400,13 +400,13 @@ async def process_instruction(callback: CallbackQuery):
 @router.callback_query(F.data == "connect")
 @check_subscription_required
 async def process_connect(callback: CallbackQuery):
-    await safe_edit_text(callback.message, "🔑 Выберите актуальную подписку:", reply_markup=get_subscriptions_keyboard())
+    await safe_edit_text(callback.message, "🔑 Выберите актуальный ключ:", reply_markup=get_subscriptions_keyboard())
     await callback.answer()
 
 
 @router.callback_query(F.data == "no_sub")
 async def process_no_sub(callback: CallbackQuery):
-    await callback.answer("❌ Эта подписка пока недоступна", show_alert=True)
+    await callback.answer("❌ Этот ключ пока недоступен", show_alert=True)
 
 
 @router.callback_query(F.data.startswith("sub_"))
@@ -417,9 +417,9 @@ async def process_sub_selection(callback: CallbackQuery):
         sub = db.subscriptions[sub_index]
         key_text = f"`{sub['key']}`"
         builder = InlineKeyboardBuilder()
-        builder.row(InlineKeyboardButton(text="🔙 Назад к подпискам", callback_data="connect"))
+        builder.row(InlineKeyboardButton(text="🔙 Назад к ключам", callback_data="connect"))
         await safe_edit_text(callback.message,
-            f"🔐 Ключ подписки от {sub['date']}:\n\n{key_text}\n\n⚠️ Нажмите на ключ, чтобы скопировать его.",
+            f"🔐 Ключ от {sub['date']}:\n\n{key_text}\n\n⚠️ Нажмите на ключ, чтобы скопировать его.",
             reply_markup=builder.as_markup(), parse_mode=ParseMode.MARKDOWN)
     await callback.answer()
 
@@ -508,7 +508,7 @@ async def admin_subs_menu(callback: CallbackQuery, state: FSMContext):
     if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("⛔ Нет доступа")
         return
-    await safe_edit_text(callback.message, "🔑 Управление подписками:", reply_markup=get_admin_subs_keyboard())
+    await safe_edit_text(callback.message, "🔑 Управление ключами:", reply_markup=get_admin_subs_keyboard())
     await callback.answer()
 
 
@@ -531,7 +531,7 @@ async def admin_add_sub_start(callback: CallbackQuery, state: FSMContext):
     if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("⛔ Нет доступа")
         return
-    await safe_edit_text(callback.message, "📅 Введите дату подписки (например: 17.06.2026):", reply_markup=get_back_keyboard("admin_subs_menu"))
+    await safe_edit_text(callback.message, "📅 Введите дату ключа (например: 17.06.2026):", reply_markup=get_back_keyboard("admin_subs_menu"))
     await state.set_state(AdminStates.waiting_for_sub_date)
     await callback.answer()
 
@@ -539,7 +539,7 @@ async def admin_add_sub_start(callback: CallbackQuery, state: FSMContext):
 @router.message(StateFilter(AdminStates.waiting_for_sub_date))
 async def admin_add_sub_date(message: Message, state: FSMContext):
     await state.update_data(sub_date=message.text)
-    await message.answer("🔑 Теперь отправьте ключ подписки:", reply_markup=get_back_keyboard("admin_subs_menu"))
+    await message.answer("🔑 Теперь отправьте ключ:", reply_markup=get_back_keyboard("admin_subs_menu"))
     await state.set_state(AdminStates.waiting_for_sub_key)
 
 
@@ -549,7 +549,7 @@ async def admin_add_sub_key(message: Message, state: FSMContext):
     sub_date = data['sub_date']
     sub_key = message.text
     db.add_subscription(sub_date, sub_key)
-    await message.answer(f"✅ Подписка от {sub_date} успешно добавлена!\nВсего подписок: {len(db.subscriptions)}/5",
+    await message.answer(f"✅ Ключ от {sub_date} успешно добавлен!\nВсего подписок: {len(db.subscriptions)}/5",
         reply_markup=get_back_keyboard("admin_subs_menu"))
     await state.clear()
 
@@ -577,7 +577,7 @@ async def admin_remove_sub_index(message: Message, state: FSMContext):
         index = int(message.text)
         if 0 <= index < len(db.subscriptions):
             removed = db.subscriptions.pop(index)
-            await message.answer(f"✅ Подписка {removed['date']} удалена!", reply_markup=get_back_keyboard("admin_subs_menu"))
+            await message.answer(f"✅ Ключ {removed['date']} удален!", reply_markup=get_back_keyboard("admin_subs_menu"))
         else:
             await message.answer("❌ Неверный индекс.", reply_markup=get_back_keyboard("admin_subs_menu"))
             return
