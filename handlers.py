@@ -880,7 +880,7 @@ async def admin_support_list(callback: CallbackQuery, state: FSMContext):
         reply_builder.row(InlineKeyboardButton(text="🔙 Назад", callback_data="admin_support_menu"))
         reply_markup = reply_builder.as_markup()
     
-    await safe_edit_text(callback.message, text, reply_markup=reply_markup)
+    await callback.message.edit_text(text, reply_markup=reply_markup)
     await callback.answer()
 
 
@@ -950,7 +950,10 @@ async def admin_ad_list(callback: CallbackQuery, state: FSMContext):
         reply_builder.row(InlineKeyboardButton(text="🔙 Назад", callback_data="admin_support_menu"))
         reply_markup = reply_builder.as_markup()
     
-    await safe_edit_text(callback.message, text, reply_markup=reply_markup)
+    try:
+        await callback.message.edit_text(text, reply_markup=reply_markup)
+    except Exception as e:
+        logger.error(f"Error in admin_support_list: {e}")
     await callback.answer()
 
 
