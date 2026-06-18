@@ -419,7 +419,7 @@ async def process_sub_selection(callback: CallbackQuery):
         builder = InlineKeyboardBuilder()
         builder.row(InlineKeyboardButton(text="🔙 Назад к подпискам", callback_data="connect"))
         await safe_edit_text(callback.message,
-            f"🔐 Ключ подписки для Rat VPN от {sub['date']}:\n\n{key_text}\n\n⚠️ Нажмите на ключ, чтобы скопировать его.",
+            f"🔐 Ключ подписки от {sub['date']}:\n\n{key_text}\n\n⚠️ Нажмите на ключ, чтобы скопировать его.",
             reply_markup=builder.as_markup(), parse_mode=ParseMode.MARKDOWN)
     await callback.answer()
 
