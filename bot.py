@@ -387,10 +387,10 @@ async def process_instruction(callback: CallbackQuery):
         "3. Скопируй ключ — просто нажми на него\n\n"
         "4. В программе нажми «Добавить сервер» → вставь скопированную ссылку\n\n"
         "5. Готово! Подключайся и пользуйся 🎉\n\n"
-        "📅 Обновление подписок:\n"
+        "📅 Обновление ключей:\n"
         "• Новые ключи — каждый день (сверху)\n"
         "• Старые уходят вниз и удаляются\n"
-        "• Всегда 5 актуальных подписок\n\n"
+        "• Всегда 5 актуальных ключей\n\n"
         "💬 Вопросы? Жми «🆘 Поддержка»",
         reply_markup=get_back_keyboard("back_to_main")
     )
@@ -805,7 +805,7 @@ async def admin_support_reply_send(message: Message, state: FSMContext):
     reply_text = message.text
     msg = db.support_messages[index]
     try:
-        await message.bot.send_message(chat_id=msg['user_id'], text=f"📩 Ответ от поддержки Rat VPN:\n\n{reply_text}")
+        await message.bot.send_message(chat_id=msg['user_id'], text=f"📩 Ответ от поддержки:\n\n{reply_text}")
         msg['replied'] = True
         db.save_data()
         await message.answer(f"✅ Ответ отправлен пользователю @{msg['username']}!", reply_markup=get_back_keyboard("admin_support_menu"))
@@ -874,7 +874,7 @@ async def admin_ad_reply_send(message: Message, state: FSMContext):
     reply_text = message.text
     msg = db.ad_messages[index]
     try:
-        await message.bot.send_message(chat_id=msg['user_id'], text=f"📩 Ответ от администратора Rat VPN:\n\n{reply_text}")
+        await message.bot.send_message(chat_id=msg['user_id'], text=f"📩 Ответ от администратора:\n\n{reply_text}")
         msg['replied'] = True
         db.save_data()
         await message.answer(f"✅ Ответ отправлен пользователю @{msg['username']}!", reply_markup=get_back_keyboard("admin_support_menu"))
@@ -928,7 +928,7 @@ async def admin_stats(callback: CallbackQuery, state: FSMContext):
     ad_unreplied = sum(1 for m in db.ad_messages if not m['replied'])
     await safe_edit_text(callback.message,
         f"📊 Статистика бота:\n\n"
-        f"👥 Пользователей: {len(db.users)}\n🚫 В чёрном списке: {len(db.blacklist)}\n"
+        f"👥 Пользователей: {len(db.users)}\n🚫 Черный список: {len(db.blacklist)}\n"
         f"🔑 Активных подписок: {len(db.subscriptions)}/5\n📢 Спонсоров: {len(db.sponsors)}\n"
         f"📨 Рассылок: {db.broadcast_count}\n\n"
         f"🆘 Обращений в поддержку: {support_count} (не отвечено: {support_unreplied})\n"
