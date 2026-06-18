@@ -57,7 +57,6 @@ def get_vpn_page_keyboard(keys, total: int, page: int = 1) -> InlineKeyboardMark
             callback_data=f"vpnkey_{k['id']}"
         ))
 
-    # Кнопки пагинации
     if total_pages > 1:
         nav_buttons = []
         if page > 1:
@@ -80,10 +79,9 @@ def get_proxy_page_keyboard(proxies, total: int, page: int = 1) -> InlineKeyboar
     for p in proxies:
         builder.row(InlineKeyboardButton(
             text=f"🛡️ {p['name']}",
-            url=p['url']  # кнопка-ссылка для подключения прокси
+            url=p['url']
         ))
 
-    # Кнопки пагинации
     if total_pages > 1:
         nav_buttons = []
         if page > 1:
@@ -101,10 +99,8 @@ def get_proxy_page_keyboard(proxies, total: int, page: int = 1) -> InlineKeyboar
 
 def get_settings_keyboard(vpn_notify: bool, proxy_notify: bool) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-
     vpn_status = "✅" if vpn_notify else "❌"
     proxy_status = "✅" if proxy_notify else "❌"
-
     builder.row(InlineKeyboardButton(
         text=f"🔔 VPN-уведомления: {vpn_status}",
         callback_data="toggle_vpn_notify"
@@ -219,10 +215,19 @@ def get_back_keyboard(callback_data: str) -> InlineKeyboardMarkup:
 
 
 def get_confirm_notify_keyboard(broadcast_type: str) -> InlineKeyboardMarkup:
-    """Клавиатура для подтверждения рассылки (vpn или proxy)"""
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(text="✅ Да", callback_data=f"confirm_broadcast_{broadcast_type}"),
         InlineKeyboardButton(text="❌ Нет", callback_data="cancel_broadcast")
     )
+    return builder.as_markup()
+
+
+def get_admin_notify_reply_keyboard(msg_id: int, msg_type: str) -> InlineKeyboardMarkup:
+    """Кнопка Ответить в уведомлении админу (support или ad)"""
+    builder = InlineKeyboardBuilder()
+    builder.row(InlineKeyboardButton(
+        text="💬 Ответить",
+        callback_data=f"reply_{msg_type}_{msg_id}"
+    ))
     return builder.as_markup()
