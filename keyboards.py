@@ -137,13 +137,22 @@ def get_first_time_proxy_keyboard() -> InlineKeyboardMarkup:
 
 def get_admin_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="🔑 VPN-ключи", callback_data="admin_vpn_menu"))
-    builder.row(InlineKeyboardButton(text="🛡️ Прокси", callback_data="admin_proxy_menu"))
-    builder.row(InlineKeyboardButton(text="📢 Спонсоры", callback_data="admin_sponsors_menu"))
-    builder.row(InlineKeyboardButton(text="📨 Рассылка", callback_data="admin_broadcast"))
-    builder.row(InlineKeyboardButton(text="🆘 Обращения", callback_data="admin_support_menu"))
-    builder.row(InlineKeyboardButton(text="🚫 Чёрный список", callback_data="admin_blacklist_menu"))
-    builder.row(InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats"))
+    builder.row(
+        InlineKeyboardButton(text="🔑 VPN", callback_data="admin_vpn_menu"),
+        InlineKeyboardButton(text="🛡️ Прокси", callback_data="admin_proxy_menu")
+    )
+    builder.row(
+        InlineKeyboardButton(text="📢 Спонсоры", callback_data="admin_sponsors_menu"),
+        InlineKeyboardButton(text="🆘 Обращения", callback_data="admin_support_menu")
+    )
+    builder.row(
+        InlineKeyboardButton(text="📨 Рассылка всем", callback_data="admin_broadcast"),
+        InlineKeyboardButton(text="📩 По ID", callback_data="admin_broadcast_id")
+    )
+    builder.row(
+        InlineKeyboardButton(text="🚫 ЧС", callback_data="admin_blacklist_menu"),
+        InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")
+    )
     return builder.as_markup()
 
 
