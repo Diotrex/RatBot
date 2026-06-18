@@ -23,9 +23,9 @@ async def init_db():
     client = get_client()
     try:
         r = await client.get(f"{BASE_URL}/users?limit=1", headers=HEADERS)
-        logger.info(f"Supabase подключена (статус {r.status_code})")
+        logger.info(f"Supabase connected (status {r.status_code})")
     except Exception as e:
-        logger.error(f"Ошибка подключения к Supabase: {e}")
+        logger.error(f"Supabase connection error: {e}")
         raise
 
 async def close_db():
@@ -34,17 +34,23 @@ async def close_db():
         await _client.aclose()
         _client = None
 
-# ============ ПОЛЬЗОВАТЕЛИ ============
+# ============ USERS ============
 
 async def add_user(user_id: int, username: str = None):
     client = get_client()
     r = await client.get(f"{BASE_URL}/users?user_id=eq.{user_id}", headers=HEADERS)
     existing = r.json()
     if existing:
-        if username and existing[0].get('username') != username:
-            await client.patch(f"{BASE_URL}/users?user_id=eq.{user_id}", headers=HEADERS, 
-                json={"username": username})
-        return existing[0]
+        user = existing[0]
+        if username and user.get('username') != username:
+            await client.patch(f"{BASE_URL}/users?user_id=eq.{user_id}", headers=HEADERS, json={"username": username})
+        if user.get('vpn_notify') is None:
+            await client.patch(f"{BASE_URL}/users?user_id=eq.{user_id}", headers=HEADERS, json={"vpn_notify": False})
+            user['vpn_notify'] = False
+        if user.get('proxy_notify') is None:
+            await client.patch(f"{BASE_URL}/users?user_id=eq.{user_id}", headers=HEADERS, json={"proxy_notify": False})
+            user['proxy_notify'] = False
+        return user
     await client.post(f"{BASE_URL}/users", headers=HEADERS, json={
         "user_id": user_id, "username": username,
         "vpn_notify": False, "proxy_notify": False
@@ -67,8 +73,8 @@ async def get_all_users():
 async def get_users_count():
     client = get_client()
     r = await client.get(f"{BASE_URL}/users?select=user_id", headers={"Prefer": "count=exact", **HEADERS})
-    content_range = r.headers.get("content-range", "0/0")
-    return int(content_range.split("/")[-1]) if "/" in content_range else 0
+    cr = r.headers.get("content-range", "0/0")
+    return int(cr.split("/")[-1]) if "/" in cr else 0
 
 async def set_vpn_notify(user_id: int, value: bool):
     client = get_client()
@@ -90,7 +96,14 @@ async def get_users_with_proxy_notify():
     data = r.json()
     return [row['user_id'] for row in data] if data else []
 
-# ============ ЧЁРНЫЙ СПИСОК ============
+async def get_active_users_last_24h():
+    client = get_client()
+    r = await client.get(f"{BASE_URL}/users?created_at=gte.now()-interval%2724+hours%27&select=user_id", 
+        headers={"Prefer": "count=exact", **HEADERS})
+    cr = r.headers.get("content-range", "0/0")
+    return int(cr.split("/")[-1]) if "/" in cr else 0
+
+# ============ BLACKLIST ============
 
 async def add_to_blacklist(user_id: int):
     client = get_client()
@@ -114,23 +127,19 @@ async def get_blacklist():
     data = r.json()
     return [row['user_id'] for row in data] if data else []
 
-# ============ VPN КЛЮЧИ ============
+# ============ VPN KEYS ============
 
 async def add_vpn_key(date: str, key: str):
     client = get_client()
-    r = await client.get(f"{BASE_URL}/vpn_keys?select=id&order=id.asc&limit=1", 
-        headers={"Prefer": "count=exact", **HEADERS})
-    content_range = r.headers.get("content-range", "0/0")
-    total = int(content_range.split("/")[-1]) if "/" in content_range else 0
-    if total >= 50:
-        oldest = r.json()
-        if oldest:
-            await client.delete(f"{BASE_URL}/vpn_keys?id=eq.{oldest[0]['id']}", headers=HEADERS)
     await client.post(f"{BASE_URL}/vpn_keys", headers=HEADERS, json={"date": date, "key": key})
 
 async def remove_vpn_key(key_id: int):
     client = get_client()
     await client.delete(f"{BASE_URL}/vpn_keys?id=eq.{key_id}", headers=HEADERS)
+
+async def delete_old_vpn_keys(days: int):
+    client = get_client()
+    await client.delete(f"{BASE_URL}/vpn_keys?created_at=lt.now()-interval%27{days}+days%27", headers=HEADERS)
 
 async def get_vpn_keys_page(page: int = 1):
     client = get_client()
@@ -139,8 +148,8 @@ async def get_vpn_keys_page(page: int = 1):
         f"{BASE_URL}/vpn_keys?select=*&order=id.desc&limit={ITEMS_PER_PAGE}&offset={offset}",
         headers={"Prefer": "count=exact", **HEADERS}
     )
-    content_range = r.headers.get("content-range", "0/0")
-    total = int(content_range.split("/")[-1]) if "/" in content_range else 0
+    cr = r.headers.get("content-range", "0/0")
+    total = int(cr.split("/")[-1]) if "/" in cr else 0
     data = r.json()
     return (data if data else []), total
 
@@ -150,23 +159,19 @@ async def get_all_vpn_keys():
     data = r.json()
     return data if data else []
 
-# ============ ПРОКСИ ============
+# ============ PROXY ============
 
 async def add_proxy(name: str, url: str):
     client = get_client()
-    r = await client.get(f"{BASE_URL}/proxy_list?select=id&order=id.asc&limit=1",
-        headers={"Prefer": "count=exact", **HEADERS})
-    content_range = r.headers.get("content-range", "0/0")
-    total = int(content_range.split("/")[-1]) if "/" in content_range else 0
-    if total >= 50:
-        oldest = r.json()
-        if oldest:
-            await client.delete(f"{BASE_URL}/proxy_list?id=eq.{oldest[0]['id']}", headers=HEADERS)
     await client.post(f"{BASE_URL}/proxy_list", headers=HEADERS, json={"name": name, "url": url})
 
 async def remove_proxy(proxy_id: int):
     client = get_client()
     await client.delete(f"{BASE_URL}/proxy_list?id=eq.{proxy_id}", headers=HEADERS)
+
+async def delete_old_proxies(days: int):
+    client = get_client()
+    await client.delete(f"{BASE_URL}/proxy_list?created_at=lt.now()-interval%27{days}+days%27", headers=HEADERS)
 
 async def get_proxy_page(page: int = 1):
     client = get_client()
@@ -175,8 +180,8 @@ async def get_proxy_page(page: int = 1):
         f"{BASE_URL}/proxy_list?select=*&order=id.desc&limit={ITEMS_PER_PAGE}&offset={offset}",
         headers={"Prefer": "count=exact", **HEADERS}
     )
-    content_range = r.headers.get("content-range", "0/0")
-    total = int(content_range.split("/")[-1]) if "/" in content_range else 0
+    cr = r.headers.get("content-range", "0/0")
+    total = int(cr.split("/")[-1]) if "/" in cr else 0
     data = r.json()
     return (data if data else []), total
 
@@ -186,7 +191,7 @@ async def get_all_proxies():
     data = r.json()
     return data if data else []
 
-# ============ СПОНСОРЫ ============
+# ============ SPONSORS ============
 
 async def add_sponsor(username: str):
     client = get_client()
@@ -209,7 +214,7 @@ async def get_channels_to_check():
     sponsors = await get_sponsors()
     return [YOUR_CHANNEL] + sponsors
 
-# ============ ОБРАЩЕНИЯ ============
+# ============ MESSAGES ============
 
 async def add_support_message(user_id: int, username: str, message: str, timestamp: str):
     client = get_client()
@@ -245,19 +250,35 @@ async def mark_ad_replied(msg_id: int):
     client = get_client()
     await client.patch(f"{BASE_URL}/ad_messages?id=eq.{msg_id}", headers=HEADERS, json={"replied": True})
 
-# ============ РАССЫЛКА ============
+# ============ BROADCAST ============
 
 async def add_broadcast_log(broadcast_type: str, count: int):
     client = get_client()
-    await client.post(f"{BASE_URL}/broadcast_log", headers=HEADERS, json={
-        "type": broadcast_type, "count": count
-    })
+    await client.post(f"{BASE_URL}/broadcast_log", headers=HEADERS, json={"type": broadcast_type, "count": count})
 
 async def get_broadcast_count():
     client = get_client()
     r = await client.get(f"{BASE_URL}/broadcast_log?select=id", headers={"Prefer": "count=exact", **HEADERS})
-    content_range = r.headers.get("content-range", "0/0")
-    return int(content_range.split("/")[-1]) if "/" in content_range else 0
+    cr = r.headers.get("content-range", "0/0")
+    return int(cr.split("/")[-1]) if "/" in cr else 0
+
+# ============ SETTINGS ============
+
+async def get_setting(key: str):
+    client = get_client()
+    r = await client.get(f"{BASE_URL}/settings?key=eq.{key}", headers=HEADERS)
+    data = r.json()
+    return data[0]['value'] if data else None
+
+async def set_setting(key: str, value: str):
+    client = get_client()
+    r = await client.get(f"{BASE_URL}/settings?key=eq.{key}", headers=HEADERS)
+    if r.json():
+        await client.patch(f"{BASE_URL}/settings?key=eq.{key}", headers=HEADERS, json={"value": value})
+    else:
+        await client.post(f"{BASE_URL}/settings", headers=HEADERS, json={"key": key, "value": value})
+
+# ============ STATS ============
 
 async def get_stats():
     async def count_table(table, filter=""):
@@ -266,11 +287,12 @@ async def get_stats():
         if filter:
             url += f"&{filter}"
         r = await client.get(url, headers={"Prefer": "count=exact", **HEADERS})
-        content_range = r.headers.get("content-range", "0/0")
-        return int(content_range.split("/")[-1]) if "/" in content_range else 0
+        cr = r.headers.get("content-range", "0/0")
+        return int(cr.split("/")[-1]) if "/" in cr else 0
     
     return {
         "users": await get_users_count(),
+        "active_24h": await get_active_users_last_24h(),
         "blacklist": len(await get_blacklist()),
         "vpn_keys": await count_table("vpn_keys"),
         "proxy_count": await count_table("proxy_list"),
