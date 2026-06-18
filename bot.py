@@ -85,7 +85,7 @@ class Database:
             self.ad_messages = data.get("ad_messages", [])
             self.broadcast_count = data.get("broadcast_count", 0)
             logger.info(f"Данные загружены: {len(self.users)} пользователей, "
-                        f"{len(self.subscriptions)} подписок, "
+                        f"{len(self.subscriptions)} ключей, "
                         f"{len(self.sponsors)} спонсоров, "
                         f"{len(self.blacklist)} в чёрном списке")
         except Exception as e:
@@ -251,7 +251,7 @@ def get_admin_subs_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="➕ Добавить ключ", callback_data="admin_add_sub"))
     builder.row(InlineKeyboardButton(text="❌ Удалить ключ", callback_data="admin_remove_sub"))
-    builder.row(InlineKeyboardButton(text="📋 Список подписок", callback_data="admin_list_subs"))
+    builder.row(InlineKeyboardButton(text="📋 Список ключей", callback_data="admin_list_subs"))
     builder.row(InlineKeyboardButton(text="🔙 Назад в админ-панель", callback_data="back_to_admin"))
     return builder.as_markup()
 
@@ -519,9 +519,9 @@ async def admin_list_subs(callback: CallbackQuery, state: FSMContext):
         await callback.answer("⛔ Нет доступа")
         return
     if not db.subscriptions:
-        text = "📋 Подписок пока нет."
+        text = "📋 Ключей пока нет."
     else:
-        text = "📋 Список подписок:\n\n" + "\n".join([f"{i + 1}. {sub['date']}" for i, sub in enumerate(db.subscriptions)])
+        text = "📋 Список ключей:\n\n" + "\n".join([f"{i + 1}. {sub['date']}" for i, sub in enumerate(db.subscriptions)])
     await safe_edit_text(callback.message, text, reply_markup=get_back_keyboard("admin_subs_menu"))
     await callback.answer()
 
