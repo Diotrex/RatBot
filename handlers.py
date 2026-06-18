@@ -628,7 +628,7 @@ async def admin_blacklist_menu(callback: CallbackQuery, state: FSMContext):
 async def admin_blacklist_list(callback: CallbackQuery):
     if callback.from_user.id not in ADMIN_IDS: await callback.answer("⛔"); return
     bl = await db.get_blacklist()
-    text = "📋 ЧС:\n\n" + "\n".join([f"• ID: {uid}" for uid in bl]) if bl else "📋 Пусто."
+    text = "📋 Черный список:\n\n" + "\n".join([f"• ID: {uid}" for uid in bl]) if bl else "📋 Пусто."
     await safe_edit_text(callback.message, text, reply_markup=get_back_keyboard("admin_blacklist_menu"))
     await callback.answer()
 
