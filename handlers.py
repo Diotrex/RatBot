@@ -23,7 +23,8 @@ from keyboards import (
     get_admin_vpn_menu_keyboard, get_admin_proxy_menu_keyboard,
     get_admin_sponsors_keyboard, get_admin_blacklist_keyboard,
     get_admin_support_menu_keyboard,
-    get_back_keyboard, get_confirm_notify_keyboard
+    get_back_keyboard, get_confirm_notify_keyboard,
+    get_admin_notify_reply_keyboard
 )
 
 logger = logging.getLogger(__name__)
@@ -108,7 +109,6 @@ async def cmd_start(message: Message, state: FSMContext):
     
     user = await db.get_user(message.from_user.id)
     if user is None:
-        # Первый вход — спрашиваем про уведомления ОДИН раз
         await db.add_user(message.from_user.id, message.from_user.username or f"id{message.from_user.id}")
         await message.answer(
             "🔔 Хотите получать уведомления о новых VPN-ключах?",
@@ -117,7 +117,6 @@ async def cmd_start(message: Message, state: FSMContext):
         await state.set_state(UserStates.waiting_first_time)
         await state.update_data(first_step="vpn")
     else:
-        # Уже зарегистрирован — сразу в меню
         await message.answer(MENU_TEXT, reply_markup=get_main_menu_keyboard(), parse_mode=ParseMode.HTML)
 
 
@@ -377,11 +376,15 @@ async def process_support_message(message: Message, state: FSMContext):
         timestamp=timestamp
     )
     
+    messages = await db.get_support_messages()
+    msg_id = messages[0]['id'] if messages else 0
+    
     for admin_id in ADMIN_IDS:
         try:
             await message.bot.send_message(
                 chat_id=admin_id,
-                text=f"📨 Новое обращение в поддержку!\n\n👤 От: @{message.from_user.username or 'нет username'} (ID: {message.from_user.id})\n🕒 {timestamp}\n\n💬 Сообщение:\n{message.text}"
+                text=f"📨 Новое обращение в поддержку!\n\n👤 От: @{message.from_user.username or 'нет username'} (ID: {message.from_user.id})\n🕒 {timestamp}\n\n💬 Сообщение:\n{message.text}",
+                reply_markup=get_admin_notify_reply_keyboard(msg_id, "support")
             )
         except Exception as e:
             logger.error(f"Failed to notify admin {admin_id}: {e}")
@@ -416,11 +419,15 @@ async def process_ad_message(message: Message, state: FSMContext):
         timestamp=timestamp
     )
     
+    messages = await db.get_ad_messages()
+    msg_id = messages[0]['id'] if messages else 0
+    
     for admin_id in ADMIN_IDS:
         try:
             await message.bot.send_message(
                 chat_id=admin_id,
-                text=f"📢 Новая заявка на рекламу!\n\n👤 От: @{message.from_user.username or 'нет username'} (ID: {message.from_user.id})\n🕒 {timestamp}\n\n💬 Сообщение:\n{message.text}"
+                text=f"📢 Новая заявка на рекламу!\n\n👤 От: @{message.from_user.username or 'нет username'} (ID: {message.from_user.id})\n🕒 {timestamp}\n\n💬 Сообщение:\n{message.text}",
+                reply_markup=get_admin_notify_reply_keyboard(msg_id, "ad")
             )
         except Exception as e:
             logger.error(f"Failed to notify admin {admin_id}: {e}")
@@ -864,15 +871,12 @@ async def admin_support_list(callback: CallbackQuery, state: FSMContext):
         reply_markup = get_back_keyboard("admin_support_menu")
     else:
         text = "📨 Обращения в поддержку:\n\n"
-        reply_builder = InlineKeyboardBuilder()
         for i, msg in enumerate(messages):
             status = "✅" if msg['replied'] else "❌"
             text += f"{i}. {status} @{msg['username']} ({msg['timestamp']})\n   💬 {msg['message'][:100]}\n\n"
-            if not msg['replied']:
-                reply_builder.row(InlineKeyboardButton(
-                    text=f"💬 Ответить на #{i}",
-                    callback_data=f"reply_support_{msg['id']}"
-                ))
+        text += "Нажмите кнопку ниже, чтобы ответить:"
+        reply_builder = InlineKeyboardBuilder()
+        reply_builder.row(InlineKeyboardButton(text="💬 Ответить (ввести номер)", callback_data="admin_support_reply"))
         reply_builder.row(InlineKeyboardButton(text="🔙 Назад", callback_data="admin_support_menu"))
         reply_markup = reply_builder.as_markup()
     
@@ -880,39 +884,44 @@ async def admin_support_list(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-@router.callback_query(F.data.startswith("reply_support_"))
-async def reply_support_start(callback: CallbackQuery, state: FSMContext):
+@router.callback_query(F.data == "admin_support_reply")
+async def admin_support_reply_start(callback: CallbackQuery, state: FSMContext):
     if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("⛔ Нет доступа")
         return
     
-    msg_id = int(callback.data.split("_")[-1])
     messages = await db.get_support_messages()
-    msg = None
-    for m in messages:
-        if m['id'] == msg_id:
-            msg = m
-            break
-    
-    if not msg:
-        await callback.answer("Обращение не найдено", show_alert=True)
+    if not messages:
+        await callback.answer("Нет обращений", show_alert=True)
         return
     
-    await state.update_data(reply_msg_id=msg['id'], reply_user_id=msg['user_id'], reply_username=msg['username'])
-    await safe_edit_text(callback.message,
-        f"📨 Обращение от @{msg['username']}:\n\n💬 {msg['message']}\n\nВведите ваш ответ:",
-        reply_markup=get_back_keyboard("admin_support_menu")
-    )
-    await state.set_state(AdminReplyStates.waiting_for_support_reply_text)
+    await safe_edit_text(callback.message, "📝 Введите номер обращения для ответа:", reply_markup=get_back_keyboard("admin_support_menu"))
+    await state.set_state(AdminReplyStates.waiting_for_support_reply_select)
     await callback.answer()
 
 
+@router.message(StateFilter(AdminReplyStates.waiting_for_support_reply_select))
+async def admin_support_reply_select(message: Message, state: FSMContext):
+    try:
+        index = int(message.text)
+        messages = await db.get_support_messages()
+        if 0 <= index < len(messages):
+            msg = messages[index]
+            await state.update_data(reply_index=msg['id'], reply_user_id=msg['user_id'], reply_username=msg['username'])
+            await message.answer(f"📨 Обращение от @{msg['username']}:\n\n💬 {msg['message']}\n\nВведите ваш ответ:", reply_markup=get_back_keyboard("admin_support_menu"))
+            await state.set_state(AdminReplyStates.waiting_for_support_reply_text)
+        else:
+            await message.answer("❌ Неверный номер.", reply_markup=get_back_keyboard("admin_support_menu"))
+    except ValueError:
+        await message.answer("❌ Введите число.", reply_markup=get_back_keyboard("admin_support_menu"))
+
+
 @router.message(StateFilter(AdminReplyStates.waiting_for_support_reply_text))
-async def support_reply_send(message: Message, state: FSMContext):
+async def admin_support_reply_send(message: Message, state: FSMContext):
     data = await state.get_data()
     try:
         await message.bot.send_message(chat_id=data['reply_user_id'], text=f"📩 Ответ от поддержки:\n\n{message.text}")
-        await db.mark_support_replied(data['reply_msg_id'])
+        await db.mark_support_replied(data['reply_index'])
         await message.answer(f"✅ Ответ отправлен пользователю @{data['reply_username']}!", reply_markup=get_back_keyboard("admin_support_menu"))
     except Exception as e:
         await message.answer(f"❌ Ошибка при отправке: {e}", reply_markup=get_back_keyboard("admin_support_menu"))
@@ -932,15 +941,12 @@ async def admin_ad_list(callback: CallbackQuery, state: FSMContext):
         reply_markup = get_back_keyboard("admin_support_menu")
     else:
         text = "📢 Заявки на рекламу:\n\n"
-        reply_builder = InlineKeyboardBuilder()
         for i, msg in enumerate(messages):
             status = "✅" if msg['replied'] else "❌"
             text += f"{i}. {status} @{msg['username']} ({msg['timestamp']})\n   💬 {msg['message'][:100]}\n\n"
-            if not msg['replied']:
-                reply_builder.row(InlineKeyboardButton(
-                    text=f"💬 Ответить на #{i}",
-                    callback_data=f"reply_ad_{msg['id']}"
-                ))
+        text += "Нажмите кнопку ниже, чтобы ответить:"
+        reply_builder = InlineKeyboardBuilder()
+        reply_builder.row(InlineKeyboardButton(text="💬 Ответить (ввести номер)", callback_data="admin_ad_reply"))
         reply_builder.row(InlineKeyboardButton(text="🔙 Назад", callback_data="admin_support_menu"))
         reply_markup = reply_builder.as_markup()
     
@@ -948,8 +954,80 @@ async def admin_ad_list(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
+@router.callback_query(F.data == "admin_ad_reply")
+async def admin_ad_reply_start(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id not in ADMIN_IDS:
+        await callback.answer("⛔ Нет доступа")
+        return
+    
+    messages = await db.get_ad_messages()
+    if not messages:
+        await callback.answer("Нет заявок", show_alert=True)
+        return
+    
+    await safe_edit_text(callback.message, "📝 Введите номер заявки для ответа:", reply_markup=get_back_keyboard("admin_support_menu"))
+    await state.set_state(AdminReplyStates.waiting_for_ad_reply_select)
+    await callback.answer()
+
+
+@router.message(StateFilter(AdminReplyStates.waiting_for_ad_reply_select))
+async def admin_ad_reply_select(message: Message, state: FSMContext):
+    try:
+        index = int(message.text)
+        messages = await db.get_ad_messages()
+        if 0 <= index < len(messages):
+            msg = messages[index]
+            await state.update_data(reply_index=msg['id'], reply_user_id=msg['user_id'], reply_username=msg['username'])
+            await message.answer(f"📢 Заявка от @{msg['username']}:\n\n💬 {msg['message']}\n\nВведите ваш ответ:", reply_markup=get_back_keyboard("admin_support_menu"))
+            await state.set_state(AdminReplyStates.waiting_for_ad_reply_text)
+        else:
+            await message.answer("❌ Неверный номер.", reply_markup=get_back_keyboard("admin_support_menu"))
+    except ValueError:
+        await message.answer("❌ Введите число.", reply_markup=get_back_keyboard("admin_support_menu"))
+
+
+@router.message(StateFilter(AdminReplyStates.waiting_for_ad_reply_text))
+async def admin_ad_reply_send(message: Message, state: FSMContext):
+    data = await state.get_data()
+    try:
+        await message.bot.send_message(chat_id=data['reply_user_id'], text=f"📩 Ответ от администратора:\n\n{message.text}")
+        await db.mark_ad_replied(data['reply_index'])
+        await message.answer(f"✅ Ответ отправлен пользователю @{data['reply_username']}!", reply_markup=get_back_keyboard("admin_support_menu"))
+    except Exception as e:
+        await message.answer(f"❌ Ошибка при отправке: {e}", reply_markup=get_back_keyboard("admin_support_menu"))
+    await state.clear()
+
+
+# ============ ОТВЕТ ИЗ ЛС АДМИНА ============
+@router.callback_query(F.data.startswith("reply_support_"))
+async def reply_support_from_ls(callback: CallbackQuery, state: FSMContext):
+    if callback.from_user.id not in ADMIN_IDS:
+        await callback.answer("⛔ Нет доступа")
+        return
+    
+    msg_id = int(callback.data.split("_")[-1])
+    messages = await db.get_support_messages()
+    msg = None
+    for m in messages:
+        if m['id'] == msg_id:
+            msg = m
+            break
+    
+    if not msg:
+        await callback.answer("Обращение не найдено", show_alert=True)
+        return
+    
+    await state.update_data(reply_index=msg['id'], reply_user_id=msg['user_id'], reply_username=msg['username'])
+    await callback.message.answer(
+        f"📨 Обращение от @{msg['username']}:\n\n💬 {msg['message']}\n\nВведите ваш ответ:",
+        reply_markup=get_back_keyboard("admin_support_menu")
+    )
+    await state.set_state(AdminReplyStates.waiting_for_support_reply_text)
+    await callback.answer()
+
+
 @router.callback_query(F.data.startswith("reply_ad_"))
-async def reply_ad_start(callback: CallbackQuery, state: FSMContext):
+async def reply_ad_from_ls(callback: CallbackQuery, state: FSMContext):
     if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("⛔ Нет доступа")
         return
@@ -966,25 +1044,13 @@ async def reply_ad_start(callback: CallbackQuery, state: FSMContext):
         await callback.answer("Заявка не найдена", show_alert=True)
         return
     
-    await state.update_data(reply_msg_id=msg['id'], reply_user_id=msg['user_id'], reply_username=msg['username'])
-    await safe_edit_text(callback.message,
+    await state.update_data(reply_index=msg['id'], reply_user_id=msg['user_id'], reply_username=msg['username'])
+    await callback.message.answer(
         f"📢 Заявка от @{msg['username']}:\n\n💬 {msg['message']}\n\nВведите ваш ответ:",
         reply_markup=get_back_keyboard("admin_support_menu")
     )
     await state.set_state(AdminReplyStates.waiting_for_ad_reply_text)
     await callback.answer()
-
-
-@router.message(StateFilter(AdminReplyStates.waiting_for_ad_reply_text))
-async def ad_reply_send(message: Message, state: FSMContext):
-    data = await state.get_data()
-    try:
-        await message.bot.send_message(chat_id=data['reply_user_id'], text=f"📩 Ответ от администратора:\n\n{message.text}")
-        await db.mark_ad_replied(data['reply_msg_id'])
-        await message.answer(f"✅ Ответ отправлен пользователю @{data['reply_username']}!", reply_markup=get_back_keyboard("admin_support_menu"))
-    except Exception as e:
-        await message.answer(f"❌ Ошибка при отправке: {e}", reply_markup=get_back_keyboard("admin_support_menu"))
-    await state.clear()
 
 
 # ============ АДМИН: РАССЫЛКА ВСЕМ ============
