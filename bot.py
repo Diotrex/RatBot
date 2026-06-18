@@ -188,6 +188,7 @@ class AdminSupportStates(StatesGroup):
 def get_main_menu_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="🔌 Подключиться", callback_data="connect"))
+    builder.row(InlineKeyboardButton(text="📖 Инструкция", callback_data="instruction"))
     builder.row(
         InlineKeyboardButton(text="📢 Реклама", callback_data="ad"),
         InlineKeyboardButton(text="🆘 Поддержка", callback_data="support")
@@ -362,6 +363,26 @@ def check_subscription_required(func):
         filtered_kwargs = {k: v for k, v in kwargs.items() if k in func_params}
         return await func(callback, **filtered_kwargs)
     return wrapper
+
+@router.callback_query(F.data == "instruction")
+@check_subscription_required
+async def process_instruction(callback: CallbackQuery):
+    await safe_edit_text(
+        callback.message,
+        "📖 Как подключиться:\n\n"
+        "1. Скачай программу Happ (или любое другое с поддержкой VLESS)\n\n"
+        "2. В боте нажми «🔌 Подключиться» и выбери актуальную подписку\n\n"
+        "3. Скопируй ключ — просто нажми на него\n\n"
+        "4. В программе нажми «Добавить сервер» → вставь скопированную ссылку\n\n"
+        "5. Готово! Подключайся и пользуйся 🎉\n\n"
+        "📅 Обновление подписок:\n"
+        "• Новые ключи — каждый день (сверху)\n"
+        "• Старые уходят вниз и удаляются\n"
+        "• Всегда 5 актуальных подписок\n\n"
+        "💬 Вопросы? Жми «🆘 Поддержка»",
+        reply_markup=get_back_keyboard("back_to_main")
+    )
+    await callback.answer()
 
 
 @router.callback_query(F.data == "connect")
