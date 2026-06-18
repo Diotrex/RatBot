@@ -382,14 +382,14 @@ async def process_instruction(callback: CallbackQuery):
     await safe_edit_text(
         callback.message,
         "📖 Как подключиться:\n\n"
-        "1. Скачайте программу Happ (или любое другое с поддержкой VLESS)\n\n"
-        "2. В боте нажмите «🔌 Подключиться» и выбери актуальный ключ\n\n"
-        "3. Скопируйте ключ — просто нажми на него\n\n"
-        "4. В программе нажмите «Добавить сервер» → вставь скопированную ссылку\n\n"
+        "1. Скачайте Happ или любой другой клиент с поддержкой VLESS\n\n"
+        "2. В боте нажмите «🔌 Подключиться» и выберите актуальный ключ\n\n"
+        "3. Скопируйте ключ — просто нажмите на него\n\n"
+        "4. В программе нажмите «Добавить сервер» → вставьте скопированную ссылку\n\n"
         "5. Готово! Подключайтесь и пользуйтесь 🎉\n\n"
         "📅 Обновление ключей:\n"
-        "• Новые ключи — каждый день (сверху)\n"
-        "• Старые уходят вниз и удаляются\n"
+        "• Новые ключи публикуются каждый день\n"
+        "• Старые ключи постепенно удаляются\n"
         "• Всегда 5 актуальных ключей\n\n"
         "💬 Вопросы? Жмите «🆘 Поддержка»",
         reply_markup=get_back_keyboard("back_to_main")
@@ -560,12 +560,12 @@ async def admin_remove_sub_start(callback: CallbackQuery, state: FSMContext):
         await callback.answer("⛔ Нет доступа")
         return
     if not db.subscriptions:
-        await safe_edit_text(callback.message, "❌ Нет подписок для удаления.", reply_markup=get_back_keyboard("admin_subs_menu"))
+        await safe_edit_text(callback.message, "❌ Нет ключей для удаления.", reply_markup=get_back_keyboard("admin_subs_menu"))
         await callback.answer()
         return
     subs_list = "\n".join([f"{i}: {sub['date']}" for i, sub in enumerate(db.subscriptions)])
     await safe_edit_text(callback.message,
-        f"📋 Список ключей:\n\n{subs_list}\n\nВведите номер для удаления (0-{len(db.subscriptions) - 1}):",
+        f"📋 Список ключей:\n\n{subs_list}\n\nВведите номер ключа для удаления (0-{len(db.subscriptions) - 1}):",
         reply_markup=get_back_keyboard("admin_subs_menu"))
     await state.set_state(AdminStates.waiting_for_sub_remove_index)
     await callback.answer()
