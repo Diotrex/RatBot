@@ -7,26 +7,24 @@ logger = logging.getLogger(__name__)
 # Глобальный пул соединений
 pool = None
 
-
 async def init_db():
     """Создаёт пул соединений и таблицы"""
     global pool
-    # Парсим URL Supabase для asyncpg
-    # SUPABASE_URL: https://xxx.supabase.co -> host: db.xxx.supabase.co
-    url = SUPABASE_URL.replace("https://", "")
-    host = f"db.{url}"
-
+    
+    # Прямая строка подключения к Supabase
+    # host из SUPABASE_URL: nvoqmpraqhxuxlzozgdp -> db.nvoqmpraqhxuxlzozgdp.supabase.co
+    db_host = f"db.{SUPABASE_URL.replace('https://', '').split('.')[0]}.supabase.co"
+    
     pool = await asyncpg.create_pool(
-        host=host,
+        host=db_host,
         port=5432,
         user="postgres",
         password=SUPABASE_PASSWORD,
         database="postgres",
         ssl="require"
     )
-
+    
     async with pool.acquire() as conn:
-        # Создаём таблицы, если их нет
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 user_id BIGINT PRIMARY KEY,
@@ -35,30 +33,30 @@ async def init_db():
                 proxy_notify BOOLEAN DEFAULT FALSE,
                 created_at TIMESTAMP DEFAULT NOW()
             );
-
+            
             CREATE TABLE IF NOT EXISTS vpn_keys (
                 id SERIAL PRIMARY KEY,
                 date TEXT NOT NULL,
                 key TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT NOW()
             );
-
+            
             CREATE TABLE IF NOT EXISTS proxy_list (
                 id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL,
                 url TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT NOW()
             );
-
+            
             CREATE TABLE IF NOT EXISTS sponsors (
                 id SERIAL PRIMARY KEY,
                 channel_username TEXT NOT NULL UNIQUE
             );
-
+            
             CREATE TABLE IF NOT EXISTS blacklist (
                 user_id BIGINT PRIMARY KEY
             );
-
+            
             CREATE TABLE IF NOT EXISTS support_messages (
                 id SERIAL PRIMARY KEY,
                 user_id BIGINT NOT NULL,
@@ -67,7 +65,7 @@ async def init_db():
                 timestamp TEXT NOT NULL,
                 replied BOOLEAN DEFAULT FALSE
             );
-
+            
             CREATE TABLE IF NOT EXISTS ad_messages (
                 id SERIAL PRIMARY KEY,
                 user_id BIGINT NOT NULL,
@@ -76,7 +74,7 @@ async def init_db():
                 timestamp TEXT NOT NULL,
                 replied BOOLEAN DEFAULT FALSE
             );
-
+            
             CREATE TABLE IF NOT EXISTS broadcast_log (
                 id SERIAL PRIMARY KEY,
                 type TEXT NOT NULL,
@@ -85,15 +83,6 @@ async def init_db():
             );
         """)
         logger.info("База данных инициализирована")
-
-
-async def close_db():
-    """Закрывает пул соединений"""
-    global pool
-    if pool:
-        await pool.close()
-
-
 # ============ ПОЛЬЗОВАТЕЛИ ============
 
 async def add_user(user_id: int, username: str = None):
