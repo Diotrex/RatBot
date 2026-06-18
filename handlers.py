@@ -359,7 +359,7 @@ async def process_support(callback: CallbackQuery, state: FSMContext):
         await callback.answer()
         return
     await safe_edit_text(callback.message,
-        "🆘 Поддержка\n\nОпишите проблему одним сообщением.",
+       "🆘 Поддержка\n\nОпишите вашу проблему как можно подробнее.\nОтправьте одно сообщение, и я передам его администратору.",
         reply_markup=get_back_keyboard("back_to_main")
     )
     await state.set_state(UserStates.waiting_for_support_message)
@@ -400,7 +400,7 @@ async def process_ad(callback: CallbackQuery, state: FSMContext):
         await callback.answer()
         return
     await safe_edit_text(callback.message,
-        "📢 Реклама\n\nОпишите предложение одним сообщением.",
+        "📢 Реклама\n\nОпишите ваше предложение или вопрос по рекламе.\nОтправьте одно сообщение, и я передам его администратору.",
         reply_markup=get_back_keyboard("back_to_main")
     )
     await state.set_state(UserStates.waiting_for_ad_message)
