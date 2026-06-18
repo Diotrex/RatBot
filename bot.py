@@ -185,6 +185,16 @@ class AdminSupportStates(StatesGroup):
 
 
 # ============ КЛАВИАТУРЫ ============
+MENU_TEXT = (
+    "🐀 Rat VPN\n\n"
+    "🔌 Подключиться — получить актуальный VPN-ключ.\n"
+    "📖 Инструкция — если подключаетесь впервые.\n"
+    "📢 Реклама — сотрудничество и размещение рекламы.\n"
+    "🆘 Поддержка — сообщить о проблеме или задать вопрос.\n\n"
+    "• Приятного использования! 🚀"
+)
+
+
 def get_main_menu_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="🔌 Подключиться", callback_data="connect"))
@@ -314,7 +324,8 @@ async def cmd_start(message: Message):
         channels = db.get_channels_to_check()
         channels_list = "\n".join([f"• {ch}" for ch in channels])
         await message.answer(
-            f"👋 Добро пожаловать в Rat VPN!\n\n"
+            f"👋 Добро пожаловать в Rat VPN!\n"
+            f"• Здесь вы можете бесплатно получать актуальные VPN-ключи для Happ.\n\n"
             f"⚠️ Для использования бота необходимо подписаться на каналы:\n\n"
             f"{channels_list}\n\n"
             f"Нажмите на кнопки ниже, чтобы перейти в каналы, "
@@ -323,7 +334,7 @@ async def cmd_start(message: Message):
         )
     else:
         db.add_user(message.from_user.id)
-        await message.answer("🐀 Главное меню Rat VPN:", reply_markup=get_main_menu_keyboard())
+        await message.answer(MENU_TEXT, reply_markup=get_main_menu_keyboard())
 
 
 @router.callback_query(F.data == "check_sub")
@@ -335,7 +346,7 @@ async def process_check_sub(callback: CallbackQuery):
     is_subscribed, not_subscribed = await check_user_subscriptions(callback.bot, callback.from_user.id)
     if is_subscribed:
         db.add_user(callback.from_user.id)
-        await safe_edit_text(callback.message, "🐀 Главное меню Rat VPN:", reply_markup=get_main_menu_keyboard())
+        await safe_edit_text(callback.message, MENU_TEXT, reply_markup=get_main_menu_keyboard())
     else:
         not_sub_list = "\n".join([f"• {ch}" for ch in not_subscribed])
         await safe_edit_text(callback.message,
@@ -363,6 +374,7 @@ def check_subscription_required(func):
         filtered_kwargs = {k: v for k, v in kwargs.items() if k in func_params}
         return await func(callback, **filtered_kwargs)
     return wrapper
+
 
 @router.callback_query(F.data == "instruction")
 @check_subscription_required
@@ -468,7 +480,7 @@ async def process_ad_message(message: Message, state: FSMContext):
 @check_subscription_required
 async def process_back_to_main(callback: CallbackQuery, state: FSMContext):
     await state.clear()
-    await safe_edit_text(callback.message, "🐀 Главное меню Rat VPN:", reply_markup=get_main_menu_keyboard())
+    await safe_edit_text(callback.message, MENU_TEXT, reply_markup=get_main_menu_keyboard())
     await callback.answer()
 
 
@@ -490,7 +502,6 @@ async def back_to_admin(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-# Все админские обработчики с добавлением state.clear()
 @router.callback_query(F.data == "admin_subs_menu")
 async def admin_subs_menu(callback: CallbackQuery, state: FSMContext):
     await state.clear()
@@ -729,8 +740,7 @@ async def admin_support_menu(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     if callback.from_user.id not in ADMIN_IDS:
         await callback.answer("⛔ Нет доступа")
-        return
-    await safe_edit_text(callback.message, "🆘 Управление обращениями:", reply_markup=get_admin_support_keyboard())
+        return    await safe_edit_text(callback.message, "🆘 Управление обращениями:", reply_markup=get_admin_support_keyboard())
     await callback.answer()
 
 
