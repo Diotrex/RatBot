@@ -929,7 +929,7 @@ async def admin_stats(callback: CallbackQuery, state: FSMContext):
     await safe_edit_text(callback.message,
         f"📊 Статистика бота:\n\n"
         f"👥 Пользователей: {len(db.users)}\n🚫 Черный список: {len(db.blacklist)}\n"
-        f"🔑 Активных подписок: {len(db.subscriptions)}/5\n📢 Спонсоров: {len(db.sponsors)}\n"
+        f"🔑 Активных ключей: {len(db.subscriptions)}/5\n📢 Спонсоров: {len(db.sponsors)}\n"
         f"📨 Рассылок: {db.broadcast_count}\n\n"
         f"🆘 Обращений в поддержку: {support_count} (не отвечено: {support_unreplied})\n"
         f"📢 Заявок на рекламу: {ad_count} (не отвечено: {ad_unreplied})\n\n"
