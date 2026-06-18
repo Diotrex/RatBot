@@ -11,7 +11,6 @@ from config import BOT_TOKEN
 from handlers import router
 import database as db
 
-# Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -34,39 +33,34 @@ async def run_web_server():
     await runner.setup()
     site = web.TCPSite(runner, '0.0.0.0', 10000)
     await site.start()
-    logger.info("Веб-сервер запущен на порту 10000")
+    logger.info("Web server on port 10000")
 
 
 async def main():
-    # Инициализация базы данных
     await db.init_db()
-    logger.info("База данных подключена")
+    logger.info("DB connected")
 
-    # Создаём бота
     bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher(storage=MemoryStorage())
     dp.include_router(router)
 
-    # Проверяем доступность каналов
     channels = await db.get_channels_to_check()
     for channel in channels:
         try:
             chat = await bot.get_chat(chat_id=channel)
-            logger.info(f"✅ Канал {channel} доступен (ID: {chat.id})")
+            logger.info(f"Channel {channel} OK (ID: {chat.id})")
         except Exception as e:
-            logger.error(f"❌ Канал {channel} недоступен: {e}")
+            logger.error(f"Channel {channel} error: {e}")
 
-    # Удаляем вебхук и запускаем веб-сервер
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(run_web_server())
 
-    # Запускаем поллинг
-    logger.info("Бот запущен!")
+    logger.info("Bot started!")
     while True:
         try:
             await dp.start_polling(bot)
         except Exception as e:
-            logger.error(f"Ошибка соединения: {e}. Перезапуск через 5 сек...")
+            logger.error(f"Connection error: {e}. Restart in 5s...")
             await asyncio.sleep(5)
 
 
