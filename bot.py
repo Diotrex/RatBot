@@ -5,6 +5,7 @@ import inspect
 import os
 import json
 
+from aiohttp import web
 from aiogram import Bot, Dispatcher, F, Router, types
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
@@ -1206,6 +1207,19 @@ async def admin_stats(callback: CallbackQuery):
     )
     await callback.answer()
 
+#ping
+async def handle(request):
+    return web.Response(text="Bot is running")
+
+async def run_web_server():
+    app = web.Application()
+    app.router.add_get('/', handle)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', 10000)
+    await site.start()
+
+
 
 # ============ ЗАПУСК БОТА ============
 async def main():
@@ -1227,6 +1241,8 @@ async def main():
             logger.error(f"❌ Канал {channel} недоступен: {e}")
 
     await bot.delete_webhook(drop_pending_updates=True)
+    
+    asyncio.create_task(run_web_server())
 
     while True:
         try:
