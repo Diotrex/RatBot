@@ -959,7 +959,7 @@ async def cancel_broadcast(callback: CallbackQuery):
 
 # ============ ADMIN: STATS ============
 @router.callback_query(F.data == "admin_stats")
-async def admin_stats(callback: CallbackQuery):
+async def admin_stats(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     if callback.from_user.id not in ADMIN_IDS: await callback.answer("⛔"); return
     stats = await db.get_stats()
