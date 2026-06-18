@@ -324,7 +324,7 @@ async def cmd_start(message: Message):
         channels = db.get_channels_to_check()
         channels_list = "\n".join([f"• {ch}" for ch in channels])
         await message.answer(
-            f"👋 Добро пожаловать в Rat VPN!\n"
+            f"👋 Добро пожаловать в Rat VPN!\n\n"
             f"• Здесь вы можете бесплатно получать актуальные VPN-ключи для Happ.\n\n"
             f"⚠️ Для использования бота необходимо подписаться на каналы:\n\n"
             f"{channels_list}\n\n"
