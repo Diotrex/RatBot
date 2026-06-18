@@ -35,8 +35,8 @@ logger = logging.getLogger(__name__)
 # ============ КОНФИГУРАЦИЯ ============
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_IDS = [int(os.getenv("ADMIN_ID"))]
-YOUR_USERNAME = "RatVPNhelp"
-YOUR_CHANNEL = "@RatFreeVPN"
+YOUR_USERNAME = os.getenv("SUPPORT_USERNAME")
+YOUR_CHANNEL = os.getenv("CHANNEL_USERNAME")
 DATA_FILE = "bot_data.json"
 
 
