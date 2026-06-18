@@ -382,16 +382,16 @@ async def process_instruction(callback: CallbackQuery):
     await safe_edit_text(
         callback.message,
         "📖 Как подключиться:\n\n"
-        "1. Скачай программу Happ (или любое другое с поддержкой VLESS)\n\n"
-        "2. В боте нажми «🔌 Подключиться» и выбери актуальный ключ\n\n"
-        "3. Скопируй ключ — просто нажми на него\n\n"
-        "4. В программе нажми «Добавить сервер» → вставь скопированную ссылку\n\n"
-        "5. Готово! Подключайся и пользуйся 🎉\n\n"
+        "1. Скачайте программу Happ (или любое другое с поддержкой VLESS)\n\n"
+        "2. В боте нажмите «🔌 Подключиться» и выбери актуальный ключ\n\n"
+        "3. Скопируйте ключ — просто нажми на него\n\n"
+        "4. В программе нажмите «Добавить сервер» → вставь скопированную ссылку\n\n"
+        "5. Готово! Подключайтесь и пользуйтесь 🎉\n\n"
         "📅 Обновление ключей:\n"
         "• Новые ключи — каждый день (сверху)\n"
         "• Старые уходят вниз и удаляются\n"
         "• Всегда 5 актуальных ключей\n\n"
-        "💬 Вопросы? Жми «🆘 Поддержка»",
+        "💬 Вопросы? Жмите «🆘 Поддержка»",
         reply_markup=get_back_keyboard("back_to_main")
     )
     await callback.answer()
@@ -549,7 +549,7 @@ async def admin_add_sub_key(message: Message, state: FSMContext):
     sub_date = data['sub_date']
     sub_key = message.text
     db.add_subscription(sub_date, sub_key)
-    await message.answer(f"✅ Ключ от {sub_date} успешно добавлен!\nВсего подписок: {len(db.subscriptions)}/5",
+    await message.answer(f"✅ Ключ от {sub_date} успешно добавлен!\nВсего ключей: {len(db.subscriptions)}/5",
         reply_markup=get_back_keyboard("admin_subs_menu"))
     await state.clear()
 
@@ -565,7 +565,7 @@ async def admin_remove_sub_start(callback: CallbackQuery, state: FSMContext):
         return
     subs_list = "\n".join([f"{i}: {sub['date']}" for i, sub in enumerate(db.subscriptions)])
     await safe_edit_text(callback.message,
-        f"📋 Список подписок:\n\n{subs_list}\n\nВведите номер для удаления (0-{len(db.subscriptions) - 1}):",
+        f"📋 Список ключей:\n\n{subs_list}\n\nВведите номер для удаления (0-{len(db.subscriptions) - 1}):",
         reply_markup=get_back_keyboard("admin_subs_menu"))
     await state.set_state(AdminStates.waiting_for_sub_remove_index)
     await callback.answer()
