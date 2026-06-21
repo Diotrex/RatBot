@@ -163,9 +163,9 @@ async def get_all_vpn_keys():
 
 # ============ PROXY ============
 
-async def add_proxy(name: str, url: str):
+async def add_proxy(name: str, url: str, date: str = None):
     client = get_client()
-    await client.post(f"{BASE_URL}/proxy_list", headers=HEADERS, json={"name": name, "url": url})
+    await client.post(f"{BASE_URL}/proxy_list", headers=HEADERS, json={"name": name, "url": url, "date": date})
 
 async def remove_proxy(proxy_id: int):
     client = get_client()
