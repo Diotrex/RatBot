@@ -12,7 +12,7 @@ SUPABASE_URL = "https://nvoqmpraqhxuxlzozgdp.supabase.co"
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "sb_publishable_XWsv7Sp4kH9vHpuQUDrmdw_Fo4b1cqX")
 
 # Количество элементов на странице
-ITEMS_PER_PAGE = 5
+ITEMS_PER_PAGE = 8
 
 # Задержка между сообщениями рассылки (секунды)
 BROADCAST_DELAY = 5
