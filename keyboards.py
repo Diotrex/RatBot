@@ -108,7 +108,7 @@ def get_proxy_page_keyboard(proxies, total: int, page: int = 1) -> InlineKeyboar
 
     for p in proxies:
         builder.row(InlineKeyboardButton(
-            text=f"🛡️ {p['name']}",
+            text=f"🛡️ {p['name']} ({p.get('date', '')})",
             url=p['url']
         ))
 
