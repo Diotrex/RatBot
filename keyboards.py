@@ -5,7 +5,7 @@ from config import ITEMS_PER_PAGE
 # ============ MAIN MENU ============
 
 MENU_TEXT = (
-    "<b>🐀 DiotrexVPN</b>\n\n"
+    "<b>🛡 DiotrexVPN</b>\n\n"
     "🔌 VPN — актуальные ключи для Happ.\n"
     "🛡️ Proxy — прокси для Telegram.\n"
     "📖 Инструкция — если подключаетесь впервые.\n"
