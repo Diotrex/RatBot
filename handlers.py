@@ -532,7 +532,7 @@ async def admin_add_vpn_skip_comment(callback: CallbackQuery, state: FSMContext)
 @router.message(StateFilter(AdminStates.waiting_for_vpn_vless))
 async def admin_add_vpn_vless_text(message: Message, state: FSMContext):
     data = await state.get_data()
-    date_str = datetime.now().strftime("%d.%m.%Y | %H:%M")
+    date_str = msc_now()
     await db.add_vpn_key(date_str, data['vpn_key'], data.get('vpn_comment', 'Отсутствует'), message.text)
     await message.answer(f"✅ VPN добавлен! ({date_str})\n\nОповестить?", reply_markup=get_confirm_notify_keyboard("vpn"))
     await state.clear()
