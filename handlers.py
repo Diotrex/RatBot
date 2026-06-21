@@ -1,6 +1,11 @@
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+MSC_TZ = timezone(timedelta(hours=3))
+
+def msc_now():
+    return datetime.now(MSC_TZ).strftime("%d.%m.%Y | %H:%M")
 
 from aiogram import Bot, F, Router, types
 from aiogram.filters import Command, StateFilter
