@@ -129,9 +129,11 @@ async def get_blacklist():
 
 # ============ VPN KEYS ============
 
-async def add_vpn_key(date: str, key: str):
+async def add_vpn_key(date: str, key: str, comment: str = "Отсутствует", vless: str = None):
     client = get_client()
-    await client.post(f"{BASE_URL}/vpn_keys", headers=HEADERS, json={"date": date, "key": key})
+    await client.post(f"{BASE_URL}/vpn_keys", headers=HEADERS, json={
+        "date": date, "key": key, "comment": comment, "vless": vless
+    })
 
 async def remove_vpn_key(key_id: int):
     client = get_client()
