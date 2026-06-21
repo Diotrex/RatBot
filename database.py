@@ -98,8 +98,7 @@ async def get_users_with_proxy_notify():
 
 async def get_active_users_last_24h():
     client = get_client()
-    r = await client.get(f"{BASE_URL}/users?created_at=gte.now()-interval%2724+hours%27&select=user_id", 
-        headers={"Prefer": "count=exact", **HEADERS})
+    r = await client.get(f"{BASE_URL}/users?select=user_id", headers={"Prefer": "count=exact", **HEADERS})
     cr = r.headers.get("content-range", "0/0")
     return int(cr.split("/")[-1]) if "/" in cr else 0
 
@@ -163,9 +162,9 @@ async def get_all_vpn_keys():
 
 # ============ PROXY ============
 
-async def add_proxy(name: str, url: str, date: str = None):
+async def add_proxy(date: str, url: str):
     client = get_client()
-    await client.post(f"{BASE_URL}/proxy_list", headers=HEADERS, json={"name": name, "url": url, "date": date})
+    await client.post(f"{BASE_URL}/proxy_list", headers=HEADERS, json={"date": date, "url": url})
 
 async def remove_proxy(proxy_id: int):
     client = get_client()
