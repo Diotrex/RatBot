@@ -15,7 +15,9 @@ from config import ADMIN_IDS, BROADCAST_DELAY
 from keyboards import (
     MENU_TEXT, get_main_menu_keyboard,
     get_check_subscription_keyboard,
-    get_vpn_page_keyboard, get_proxy_page_keyboard,
+    get_vpn_page_keyboard, get_vpn_key_detail_keyboard,
+    get_proxy_page_keyboard,
+    get_comment_skip_keyboard, get_vless_skip_keyboard,
     get_settings_keyboard,
     get_first_time_vpn_keyboard, get_first_time_proxy_keyboard,
     get_admin_keyboard,
@@ -34,8 +36,9 @@ router = Router()
 
 # ============ FSM STATES ============
 class AdminStates(StatesGroup):
-    waiting_for_vpn_date = State()
     waiting_for_vpn_key = State()
+    waiting_for_vpn_comment = State()
+    waiting_for_vpn_vless = State()
     waiting_for_vpn_remove_id = State()
     waiting_for_proxy_name = State()
     waiting_for_proxy_url = State()
@@ -203,7 +206,7 @@ async def process_vpn(callback: CallbackQuery):
         await callback.answer()
         return
     
-    await safe_edit_text(callback.message, "🔑 Выберите VPN-ключ:\nЧем выше, тем актуальнее!", reply_markup=get_vpn_page_keyboard(keys, total, page=1))
+    await safe_edit_text(callback.message, "🔑 Выберите VPN-ключ:", reply_markup=get_vpn_page_keyboard(keys, total, page=1))
     await callback.answer()
 
 
@@ -214,7 +217,7 @@ async def process_vpn_page(callback: CallbackQuery):
     if not keys:
         await callback.answer("Страница пуста", show_alert=True)
         return
-    await safe_edit_text(callback.message, "🔑 Выберите VPN-ключ:\nЧем выше, тем актуальнее!", reply_markup=get_vpn_page_keyboard(keys, total, page=page))
+    await safe_edit_text(callback.message, "🔑 Выберите VPN-ключ:", reply_markup=get_vpn_page_keyboard(keys, total, page=page))
     await callback.answer()
 
 
@@ -226,13 +229,36 @@ async def process_vpn_key(callback: CallbackQuery):
     if not key:
         await callback.answer("Ключ не найден", show_alert=True)
         return
+    
     key_text = f"`{key['key']}`"
+    comment = key.get('comment', 'Отсутствует')
+    
+    await safe_edit_text(callback.message,
+        f"🔐 Ключ от {key['date']}\n"
+        f"💬 Комментарий: {comment}\n\n"
+        f"{key_text}\n\n"
+        f"⚠️ Нажмите на ключ, чтобы скопировать.",
+        reply_markup=get_vpn_key_detail_keyboard(key), parse_mode=ParseMode.MARKDOWN
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data.startswith("vless_"))
+async def process_vless(callback: CallbackQuery):
+    key_id = int(callback.data.split("_")[-1])
+    all_keys = await db.get_all_vpn_keys()
+    key = next((k for k in all_keys if k['id'] == key_id), None)
+    if not key or not key.get('vless'):
+        await callback.answer("VLESS не найден", show_alert=True)
+        return
+    
     from aiogram.utils.keyboard import InlineKeyboardBuilder
     from aiogram.types import InlineKeyboardButton
+    vless_text = f"`{key['vless']}`"
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="🔙 Назад к VPN", callback_data="vpn"))
+    builder.row(InlineKeyboardButton(text="🔙 Назад к ключу", callback_data=f"vpnkey_{key_id}"))
     await safe_edit_text(callback.message,
-        f"🔐 Ключ от {key['date']}:\n\n{key_text}\n\n⚠️ Нажмите на ключ, чтобы скопировать.",
+        f"🔗 VLESS от {key['date']}:\n\n{vless_text}\n\n⚠️ Нажмите, чтобы скопировать.",
         reply_markup=builder.as_markup(), parse_mode=ParseMode.MARKDOWN
     )
     await callback.answer()
@@ -252,7 +278,7 @@ async def process_proxy(callback: CallbackQuery):
         await callback.answer()
         return
     
-    await safe_edit_text(callback.message, "🛡️ Выберите proxy:", reply_markup=get_proxy_page_keyboard(proxies, total, page=1))
+    await safe_edit_text(callback.message, "🛡️ Выберите proxy (нажмите для подключения):", reply_markup=get_proxy_page_keyboard(proxies, total, page=1))
     await callback.answer()
 
 
@@ -276,16 +302,15 @@ async def process_instruction(callback: CallbackQuery):
         return
     await safe_edit_text(
         callback.message,
-       "📖 Как подключиться:\n\n"
-        "1. Скачайте Happ или любой другой клиент с поддержкой VLESS\n\n"
+        "📖 Как подключиться:\n\n"
+        "1. Скачайте Happ или другой клиент с поддержкой VLESS\n\n"
         "2. В боте нажмите «🔌 Подключиться» и выберите актуальный ключ\n\n"
         "3. Скопируйте ключ — просто нажмите на него\n\n"
         "4. В программе нажмите «Добавить сервер» → вставьте скопированную ссылку\n\n"
         "5. Готово! Подключайтесь и пользуйтесь 🎉\n\n"
         "📅 Обновление ключей:\n"
         "• Новые ключи публикуются каждый день\n"
-        "• Старые ключи постепенно удаляются\n"
-        "• Всегда 5 актуальных ключей\n\n"
+        "• Старые ключи постепенно удаляются\n\n"
         "💬 Вопросы? Жмите «🆘 Поддержка»",
         reply_markup=get_back_keyboard("back_to_main")
     )
@@ -359,7 +384,7 @@ async def process_support(callback: CallbackQuery, state: FSMContext):
         await callback.answer()
         return
     await safe_edit_text(callback.message,
-       "🆘 Поддержка\n\nОпишите вашу проблему как можно подробнее.\nОтправьте одно сообщение, и я передам его администратору.",
+        "🆘 Поддержка\n\nОпишите вашу проблему как можно подробнее.\nОтправьте одно сообщение, и я передам его администратору.",
         reply_markup=get_back_keyboard("back_to_main")
     )
     await state.set_state(UserStates.waiting_for_support_message)
@@ -471,22 +496,50 @@ async def admin_list_vpn(callback: CallbackQuery):
 @router.callback_query(F.data == "admin_add_vpn")
 async def admin_add_vpn_start(callback: CallbackQuery, state: FSMContext):
     if callback.from_user.id not in ADMIN_IDS: await callback.answer("⛔"); return
-    await safe_edit_text(callback.message, "📅 Дата ключа:", reply_markup=get_back_keyboard("admin_vpn_menu"))
-    await state.set_state(AdminStates.waiting_for_vpn_date)
-    await callback.answer()
-
-@router.message(StateFilter(AdminStates.waiting_for_vpn_date))
-async def admin_add_vpn_date(message: Message, state: FSMContext):
-    await state.update_data(vpn_date=message.text)
-    await message.answer("🔑 Ключ:", reply_markup=get_back_keyboard("admin_vpn_menu"))
+    await safe_edit_text(callback.message, "🔑 Отправьте ключ:", reply_markup=get_back_keyboard("admin_vpn_menu"))
     await state.set_state(AdminStates.waiting_for_vpn_key)
+    await callback.answer()
 
 @router.message(StateFilter(AdminStates.waiting_for_vpn_key))
 async def admin_add_vpn_key(message: Message, state: FSMContext):
+    await state.update_data(vpn_key=message.text)
+    await message.answer("💬 Добавить комментарий?", reply_markup=get_comment_skip_keyboard())
+    await state.set_state(AdminStates.waiting_for_vpn_comment)
+
+@router.callback_query(StateFilter(AdminStates.waiting_for_vpn_comment), F.data == "add_comment")
+async def admin_add_vpn_comment_start(callback: CallbackQuery, state: FSMContext):
+    await safe_edit_text(callback.message, "✏️ Введите комментарий:", reply_markup=get_back_keyboard("admin_vpn_menu"))
+    await state.set_state(AdminStates.waiting_for_vpn_comment)
+
+@router.message(StateFilter(AdminStates.waiting_for_vpn_comment))
+async def admin_add_vpn_comment_text(message: Message, state: FSMContext):
+    await state.update_data(vpn_comment=message.text)
+    await message.answer("🔗 Отправьте VLESS-ссылку:", reply_markup=get_vless_skip_keyboard())
+    await state.set_state(AdminStates.waiting_for_vpn_vless)
+
+@router.callback_query(StateFilter(AdminStates.waiting_for_vpn_comment), F.data == "skip_comment")
+async def admin_add_vpn_skip_comment(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(vpn_comment="Отсутствует")
+    await safe_edit_text(callback.message, "🔗 Отправьте VLESS-ссылку:", reply_markup=get_vless_skip_keyboard())
+    await state.set_state(AdminStates.waiting_for_vpn_vless)
+    await callback.answer()
+
+@router.message(StateFilter(AdminStates.waiting_for_vpn_vless))
+async def admin_add_vpn_vless_text(message: Message, state: FSMContext):
     data = await state.get_data()
-    await db.add_vpn_key(data['vpn_date'], message.text)
-    await message.answer(f"✅ VPN добавлен!\n\nОповестить?", reply_markup=get_confirm_notify_keyboard("vpn"))
+    date_str = datetime.now().strftime("%d.%m.%Y | %H:%M")
+    await db.add_vpn_key(date_str, data['vpn_key'], data.get('vpn_comment', 'Отсутствует'), message.text)
+    await message.answer(f"✅ VPN добавлен! ({date_str})\n\nОповестить?", reply_markup=get_confirm_notify_keyboard("vpn"))
     await state.clear()
+
+@router.callback_query(StateFilter(AdminStates.waiting_for_vpn_vless), F.data == "skip_vless")
+async def admin_add_vpn_skip_vless(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    date_str = datetime.now().strftime("%d.%m.%Y | %H:%M")
+    await db.add_vpn_key(date_str, data['vpn_key'], data.get('vpn_comment', 'Отсутствует'))
+    await safe_edit_text(callback.message, f"✅ VPN добавлен! ({date_str})\n\nОповестить?", reply_markup=get_confirm_notify_keyboard("vpn"))
+    await state.clear()
+    await callback.answer()
 
 @router.callback_query(F.data == "admin_remove_vpn")
 async def admin_remove_vpn_start(callback: CallbackQuery, state: FSMContext):
@@ -632,7 +685,7 @@ async def admin_blacklist_menu(callback: CallbackQuery, state: FSMContext):
 async def admin_blacklist_list(callback: CallbackQuery):
     if callback.from_user.id not in ADMIN_IDS: await callback.answer("⛔"); return
     bl = await db.get_blacklist()
-    text = "📋 Черный список:\n\n" + "\n".join([f"• ID: {uid}" for uid in bl]) if bl else "📋 Пусто."
+    text = "📋 Чёрный список:\n\n" + "\n".join([f"• ID: {uid}" for uid in bl]) if bl else "📋 Пусто."
     await safe_edit_text(callback.message, text, reply_markup=get_back_keyboard("admin_blacklist_menu"))
     await callback.answer()
 
@@ -957,7 +1010,7 @@ async def confirm_broadcast(callback: CallbackQuery):
 @router.callback_query(F.data == "cancel_broadcast")
 async def cancel_broadcast(callback: CallbackQuery):
     if callback.from_user.id not in ADMIN_IDS: await callback.answer("⛔"); return
-    await safe_edit_text(callback.message, "❌ Отмена.", reply_markup=get_back_keyboard("back_to_admin"))
+    await safe_edit_text(callback.message, "⚙️ Админ-панель", reply_markup=get_admin_keyboard())
     await callback.answer()
 
 
@@ -971,7 +1024,7 @@ async def admin_stats(callback: CallbackQuery, state: FSMContext):
     await safe_edit_text(callback.message,
         f"📊 Статистика:\n\n"
         f"👥 Пользователей: {stats['users']} (24ч: {stats['active_24h']})\n"
-        f"🚫 ЧС: {stats['blacklist']}\n"
+        f"🚫 Чёрный список: {stats['blacklist']}\n"
         f"🔑 VPN: {stats['vpn_keys']}\n"
         f"🛡️ Proxy: {stats['proxy_count']}\n"
         f"📢 Спонсоров: {len(stats['sponsors'])}\n"
