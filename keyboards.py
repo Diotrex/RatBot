@@ -5,8 +5,8 @@ from config import ITEMS_PER_PAGE
 # ============ MAIN MENU ============
 
 MENU_TEXT = (
-    "<b>🐀 Rat VPN</b>\n\n"
-    "🔌 VPN-ключи — актуальные ключи для Happ.\n"
+    "<b>🐀 DiotrexVPN</b>\n\n"
+    "🔌 VPN — актуальные ключи для Happ.\n"
     "🛡️ Proxy — прокси для Telegram.\n"
     "📖 Инструкция — если подключаетесь впервые.\n"
     "📢 Реклама — сотрудничество и размещение.\n"
@@ -18,7 +18,7 @@ MENU_TEXT = (
 
 def get_main_menu_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="🔌 VPN-ключи", callback_data="vpn"))
+    builder.row(InlineKeyboardButton(text="🔌 VPN", callback_data="vpn"))
     builder.row(InlineKeyboardButton(text="🛡️ Proxy", callback_data="proxy"))
     builder.row(
         InlineKeyboardButton(text="📖 Инструкция", callback_data="instruction"),
@@ -108,7 +108,7 @@ def get_proxy_page_keyboard(proxies, total: int, page: int = 1) -> InlineKeyboar
 
     for p in proxies:
         builder.row(InlineKeyboardButton(
-            text=f"🛡️ {p['name']} ({p.get('date', '')})",
+            text=f"🛡️ {p['date']}",
             url=p['url']
         ))
 
