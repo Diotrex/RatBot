@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 async def handle(request):
-    return web.Response(text="Bot is running")
+    return web.Response(text="DiotrexVPN Bot is running")
 
 
 async def run_web_server():
@@ -55,7 +55,7 @@ async def main():
     await bot.delete_webhook(drop_pending_updates=True)
     asyncio.create_task(run_web_server())
 
-    logger.info("Bot started!")
+    logger.info("DiotrexVPN Bot started!")
     while True:
         try:
             await dp.start_polling(bot)
