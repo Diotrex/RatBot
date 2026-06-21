@@ -540,7 +540,7 @@ async def admin_add_vpn_vless_text(message: Message, state: FSMContext):
 @router.callback_query(StateFilter(AdminStates.waiting_for_vpn_vless), F.data == "skip_vless")
 async def admin_add_vpn_skip_vless(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
-    date_str = datetime.now().strftime("%d.%m.%Y | %H:%M")
+    date_str = msc_now()
     await db.add_vpn_key(date_str, data['vpn_key'], data.get('vpn_comment', 'Отсутствует'))
     await safe_edit_text(callback.message, f"✅ VPN добавлен! ({date_str})\n\nОповестить?", reply_markup=get_confirm_notify_keyboard("vpn"))
     await state.clear()
@@ -600,9 +600,14 @@ async def admin_add_proxy_name(message: Message, state: FSMContext):
 @router.message(StateFilter(AdminStates.waiting_for_proxy_url))
 async def admin_add_proxy_url(message: Message, state: FSMContext):
     data = await state.get_data()
+    url = message.text.strip()
+    if not url.startswith('http://') and not url.startswith('https://'):
+        await message.answer("❌ Ссылка должна начинаться с http:// или https://\nПопробуйте снова:", reply_markup=get_back_keyboard("admin_proxy_menu"))
+        return
     await db.add_proxy(data['proxy_name'], url, msc_now())
     await message.answer(f"✅ Proxy добавлен!\n\nОповестить?", reply_markup=get_confirm_notify_keyboard("proxy"))
     await state.clear()
+
 
 @router.callback_query(F.data == "admin_remove_proxy")
 async def admin_remove_proxy_start(callback: CallbackQuery, state: FSMContext):
