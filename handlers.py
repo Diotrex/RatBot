@@ -11,9 +11,10 @@ from aiogram import Bot, F, Router, types
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton
 from aiogram.enums import ParseMode, ChatMemberStatus
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 import database as db
 from config import ADMIN_IDS, BROADCAST_DELAY
@@ -45,7 +46,6 @@ class AdminStates(StatesGroup):
     waiting_for_vpn_comment = State()
     waiting_for_vpn_vless = State()
     waiting_for_vpn_remove_id = State()
-    waiting_for_proxy_name = State()
     waiting_for_proxy_url = State()
     waiting_for_proxy_remove_id = State()
     waiting_for_sponsor_add = State()
@@ -109,7 +109,7 @@ async def cmd_start(message: Message, state: FSMContext):
         channels = await db.get_channels_to_check()
         channels_list = "\n".join([f"• {ch}" for ch in channels])
         await message.answer(
-            f"👋 Добро пожаловать в Rat VPN!\n\n"
+            f"👋 Добро пожаловать в DiotrexVPN!\n\n"
             f"• Бесплатные VPN-ключи и proxy для Telegram.\n\n"
             f"⚠️ Для использования подпишитесь на каналы:\n\n"
             f"{channels_list}\n\n"
@@ -257,8 +257,6 @@ async def process_vless(callback: CallbackQuery):
         await callback.answer("VLESS не найден", show_alert=True)
         return
     
-    from aiogram.utils.keyboard import InlineKeyboardBuilder
-    from aiogram.types import InlineKeyboardButton
     vless_text = f"`{key['vless']}`"
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="🔙 Назад к ключу", callback_data=f"vpnkey_{key_id}"))
@@ -309,7 +307,7 @@ async def process_instruction(callback: CallbackQuery):
         callback.message,
         "📖 Как подключиться:\n\n"
         "1. Скачайте Happ или другой клиент с поддержкой VLESS\n\n"
-        "2. В боте нажмите «🔌 Подключиться» и выберите актуальный ключ\n\n"
+        "2. В боте нажмите «🔌 VPN» и выберите актуальный ключ\n\n"
         "3. Скопируйте ключ — просто нажмите на него\n\n"
         "4. В программе нажмите «Добавить сервер» → вставьте скопированную ссылку\n\n"
         "5. Готово! Подключайтесь и пользуйтесь 🎉\n\n"
@@ -580,34 +578,27 @@ async def admin_proxy_menu(callback: CallbackQuery, state: FSMContext):
 async def admin_list_proxy(callback: CallbackQuery):
     if callback.from_user.id not in ADMIN_IDS: await callback.answer("⛔"); return
     proxies = await db.get_all_proxies()
-    text = "📋 Proxy:\n\n" + "\n".join([f"ID {p['id']}: {p['name']}" for p in proxies]) if proxies else "📋 Пусто."
+    text = "📋 Proxy:\n\n" + "\n".join([f"ID {p['id']}: {p['date']}" for p in proxies]) if proxies else "📋 Пусто."
     await safe_edit_text(callback.message, text, reply_markup=get_back_keyboard("admin_proxy_menu"))
     await callback.answer()
 
 @router.callback_query(F.data == "admin_add_proxy")
 async def admin_add_proxy_start(callback: CallbackQuery, state: FSMContext):
     if callback.from_user.id not in ADMIN_IDS: await callback.answer("⛔"); return
-    await safe_edit_text(callback.message, "🛡️ Название:", reply_markup=get_back_keyboard("admin_proxy_menu"))
-    await state.set_state(AdminStates.waiting_for_proxy_name)
-    await callback.answer()
-
-@router.message(StateFilter(AdminStates.waiting_for_proxy_name))
-async def admin_add_proxy_name(message: Message, state: FSMContext):
-    await state.update_data(proxy_name=message.text)
-    await message.answer("🔗 Ссылка:", reply_markup=get_back_keyboard("admin_proxy_menu"))
+    await safe_edit_text(callback.message, "🔗 Отправьте ссылку на proxy:", reply_markup=get_back_keyboard("admin_proxy_menu"))
     await state.set_state(AdminStates.waiting_for_proxy_url)
+    await callback.answer()
 
 @router.message(StateFilter(AdminStates.waiting_for_proxy_url))
 async def admin_add_proxy_url(message: Message, state: FSMContext):
-    data = await state.get_data()
     url = message.text.strip()
     if not url.startswith('http://') and not url.startswith('https://'):
         await message.answer("❌ Ссылка должна начинаться с http:// или https://\nПопробуйте снова:", reply_markup=get_back_keyboard("admin_proxy_menu"))
         return
-    await db.add_proxy(data['proxy_name'], url, msc_now())
-    await message.answer(f"✅ Proxy добавлен!\n\nОповестить?", reply_markup=get_confirm_notify_keyboard("proxy"))
+    date_str = msc_now()
+    await db.add_proxy(date_str, url)
+    await message.answer(f"✅ Proxy добавлен! ({date_str})\n\nОповестить?", reply_markup=get_confirm_notify_keyboard("proxy"))
     await state.clear()
-
 
 @router.callback_query(F.data == "admin_remove_proxy")
 async def admin_remove_proxy_start(callback: CallbackQuery, state: FSMContext):
@@ -616,7 +607,7 @@ async def admin_remove_proxy_start(callback: CallbackQuery, state: FSMContext):
     if not proxies:
         await safe_edit_text(callback.message, "❌ Нет proxy.", reply_markup=get_back_keyboard("admin_proxy_menu"))
         await callback.answer(); return
-    text = "📋 ID:\n\n" + "\n".join([f"ID {p['id']}: {p['name']}" for p in proxies])
+    text = "📋 ID:\n\n" + "\n".join([f"ID {p['id']}: {p['date']}" for p in proxies])
     await safe_edit_text(callback.message, text + "\n\nВведите ID:", reply_markup=get_back_keyboard("admin_proxy_menu"))
     await state.set_state(AdminStates.waiting_for_proxy_remove_id)
     await callback.answer()
@@ -995,7 +986,7 @@ async def confirm_broadcast(callback: CallbackQuery):
     btype = callback.data.split("_")[-1]
     if btype == "vpn":
         users = await db.get_users_with_vpn_notify()
-        text = "🔔 Новый VPN-ключ! Жми «🔌 VPN-ключи»."
+        text = "🔔 Новый VPN-ключ! Жми «🔌 VPN»."
     else:
         users = await db.get_users_with_proxy_notify()
         text = "🛡️ Новый proxy! Жми «🛡️ Proxy»."
