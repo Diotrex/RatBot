@@ -398,7 +398,7 @@ async def process_support(callback: CallbackQuery, state: FSMContext):
 
 @router.message(StateFilter(UserStates.waiting_for_support_message))
 async def process_support_message(message: Message, state: FSMContext):
-    timestamp = datetime.now().strftime("%d.%m.%Y %H:%M")
+    timestamp = msc_now()
     await db.add_support_message(
         user_id=message.from_user.id,
         username=message.from_user.username or f"id{message.from_user.id}",
@@ -439,7 +439,7 @@ async def process_ad(callback: CallbackQuery, state: FSMContext):
 
 @router.message(StateFilter(UserStates.waiting_for_ad_message))
 async def process_ad_message(message: Message, state: FSMContext):
-    timestamp = datetime.now().strftime("%d.%m.%Y %H:%M")
+    timestamp = msc_now()
     await db.add_ad_message(
         user_id=message.from_user.id,
         username=message.from_user.username or f"id{message.from_user.id}",
@@ -600,7 +600,7 @@ async def admin_add_proxy_name(message: Message, state: FSMContext):
 @router.message(StateFilter(AdminStates.waiting_for_proxy_url))
 async def admin_add_proxy_url(message: Message, state: FSMContext):
     data = await state.get_data()
-    await db.add_proxy(data['proxy_name'], message.text)
+    await db.add_proxy(data['proxy_name'], url, msc_now())
     await message.answer(f"✅ Proxy добавлен!\n\nОповестить?", reply_markup=get_confirm_notify_keyboard("proxy"))
     await state.clear()
 
@@ -896,7 +896,7 @@ async def admin_broadcast_all_send(message: Message, state: FSMContext):
             fail += 1
         await asyncio.sleep(BROADCAST_DELAY)
     await db.add_broadcast_log("manual", success)
-    await message.answer(f"📊 Готово!\n✅ {success}\n❌ {fail}", reply_markup=get_back_keyboard("back_to_admin"))
+    await message.answer(f"📊 Рассылка завершена!\n\n✅ Успешно: {success}\n❌ Ошибок: {fail}", reply_markup=get_back_keyboard("back_to_admin"))
     await state.clear()
 
 @router.callback_query(F.data == "admin_broadcast_id")
@@ -1009,7 +1009,7 @@ async def confirm_broadcast(callback: CallbackQuery):
             fail += 1
         await asyncio.sleep(BROADCAST_DELAY)
     await db.add_broadcast_log(btype, success)
-    await callback.message.edit_text(f"📊 Готово!\n✅ {success}\n❌ {fail}", reply_markup=get_back_keyboard("back_to_admin"))
+    await callback.message.edit_text(f"📊 Рассылка завершена!\n\n✅ Успешно: {success}\n❌ Ошибок: {fail}", reply_markup=get_back_keyboard("back_to_admin"))
     await callback.answer()
 
 @router.callback_query(F.data == "cancel_broadcast")
